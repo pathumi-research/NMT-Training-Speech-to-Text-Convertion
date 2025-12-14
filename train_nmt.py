@@ -382,12 +382,14 @@ if os.path.exists(model_save_path) and len(os.listdir(model_save_path)) > 0:
         model_save_path, use_safetensors=True
     ).to(device)
     tokenizer = M2M100Tokenizer.from_pretrained(model_save_path)
+    
 else:
     print(f"⬇️ Downloading model from Hugging Face: {MODEL_NAME}")
-    model = M2M100ForConditionalGeneration.from_pretrained(
-        MODEL_NAME, use_safetensors=True
-    ).to(device)
+    # 1. Load the model normally (let HF determine the best weight format)
+    model = M2M100ForConditionalGeneration.from_pretrained(MODEL_NAME).to(device)
     tokenizer = M2M100Tokenizer.from_pretrained(MODEL_NAME)
+
+    # 2. Save it to your local path using safe_serialization for future loads
     print(f"💾 Saving base model using safetensors...")
     model.save_pretrained(model_save_path, safe_serialization=True)
     tokenizer.save_pretrained(model_save_path)
@@ -464,7 +466,7 @@ training_args = Seq2SeqTrainingArguments(
     num_train_epochs=NUM_EPOCHS,
     per_device_train_batch_size=BATCH_SIZE,
     per_device_eval_batch_size=BATCH_SIZE,
-    gradient_accumulation_steps=8,
+    gradient_accumulation_steps=16,
     warmup_ratio=5/NUM_EPOCHS,
     weight_decay=0.01,
     logging_dir='./logs',
