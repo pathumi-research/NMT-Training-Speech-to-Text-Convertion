@@ -152,7 +152,7 @@ print(f"Model vocabulary size resized to: {len(tokenizer)}")
 # STEP 4: Tokenization Function and Dataset Mapping
 # ====================================================================
 
-MAX_SEQ_LENGTH = 128
+MAX_SEQ_LENGTH = 64
 
 def preprocess_function(examples):
     inputs = examples["source"]
@@ -198,9 +198,14 @@ pretrained_params = [
 
 # Group 2: Newly resized embeddings and output head -> LARGER LR
 # 'embed' for input/output embeddings, 'lm_head' for the final classification layer
+# new_params = [
+#     p for n, p in model.named_parameters() if p.requires_grad and any(ext in n for ext in ["embed", "lm_head"])
+# ]
 new_params = [
-    p for n, p in model.named_parameters() if p.requires_grad and any(ext in n for ext in ["embed", "lm_head"])
+    p for n, p in model.named_parameters()
+    if p.requires_grad and ("shared" in n or "embed_tokens" in n or "lm_head" in n)
 ]
+
 
 # Define the parameter groups for the optimizer
 optimizer_grouped_parameters = [
@@ -223,7 +228,7 @@ print(f"New/Head parameter groups (LR={LR_NEW_WEIGHTS}): {len(new_params)}")
 # STEP 6: Setup Trainer Arguments and Initialization
 # ====================================================================
 
-BATCH_SIZE = 4
+BATCH_SIZE = 2
 NUM_EPOCHS = 10
 SAVE_STEPS = 500
 
@@ -235,12 +240,13 @@ training_args = Seq2SeqTrainingArguments(
     num_train_epochs=NUM_EPOCHS,
     per_device_train_batch_size=BATCH_SIZE,
     per_device_eval_batch_size=BATCH_SIZE,
-    gradient_accumulation_steps=8, # 4 * 8 = 32 effective batch size
+    gradient_accumulation_steps=16, # 2 * 16 = 32 effective batch size
     warmup_ratio=5/NUM_EPOCHS,
     weight_decay=0.01,
     logging_dir='./logs',
     logging_steps=100,
     report_to="none",
+    fp16=True,  # Mixed precision
 
     # Checkpointing Configuration
     save_strategy="steps",
