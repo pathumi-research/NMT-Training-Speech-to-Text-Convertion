@@ -382,7 +382,7 @@ if os.path.exists(model_save_path) and len(os.listdir(model_save_path)) > 0:
         model_save_path, use_safetensors=True
     ).to(device)
     tokenizer = M2M100Tokenizer.from_pretrained(model_save_path)
-    
+
 else:
     print(f"⬇️ Downloading model from Hugging Face: {MODEL_NAME}")
     # 1. Load the model normally (let HF determine the best weight format)
@@ -433,25 +433,56 @@ tokenized_eval = eval_dataset.map(preprocess_function, batched=True).remove_colu
 print("Tokenization complete.")
 
 # ====================================================================
-# STEP 5: DIFFERENTIAL LR
+# STEP 5: Configuring Differential Learning Rates (FIXED)
 # ====================================================================
+
 print("\n5. Configuring Differential Learning Rates...")
-LR_PRE_TRAINED = 2e-5
-LR_NEW_WEIGHTS = 1e-3
 
-pretrained_params = [
-    p for n, p in model.named_parameters() if p.requires_grad and not any(ext in n for ext in ["embed", "lm_head"])
-]
-new_params = [
-    p for n, p in model.named_parameters() if p.requires_grad and ("shared" in n or "embed_tokens" in n or "lm_head" in n)
-]
+# Differential LRs
+LR_NEW_WEIGHTS = 1.0e-3 # For newly initialized/resized embeddings and output head
+LR_PRE_TRAINED = 2.0e-5 # For the core pre-trained layers (Encoder/Decoder)
 
+# Identifiers for the parameters that need the HIGHER LR (New/Head)
+# These are the embeddings ('shared', 'embed_tokens') and the final output head ('lm_head'),
+# which were resized when you added the new gloss tokens.
+NEW_PARAM_IDENTIFIERS = ["shared", "embed_tokens", "lm_head"]
+
+# Initialize two empty lists for non-overlapping parameter groups
+pretrained_params_list = []
+new_params_list = []
+
+# Iterate through all parameters once
+for name, param in model.named_parameters():
+    if not param.requires_grad:
+        continue # Skip frozen parameters
+
+    # Check if the parameter name contains any of the identifiers for the "New/Head" group
+    is_new_param = any(identifier in name for identifier in NEW_PARAM_IDENTIFIERS)
+
+    if is_new_param:
+        # Group 2: New/Head parameters (Higher LR)
+        new_params_list.append(param)
+    else:
+        # Group 1: Pre-trained parameters (Lower LR) - everything else
+        pretrained_params_list.append(param)
+
+
+# Define the parameter groups for the AdamW optimizer
 optimizer_grouped_parameters = [
-    {"params": pretrained_params, "lr": LR_PRE_TRAINED, "weight_decay": 0.01},
-    {"params": new_params, "lr": LR_NEW_WEIGHTS, "weight_decay": 0.01},
+    {
+        "params": pretrained_params_list,
+        "lr": LR_PRE_TRAINED,
+        "weight_decay": 0.01
+    },
+    {
+        "params": new_params_list,
+        "lr": LR_NEW_WEIGHTS,
+        "weight_decay": 0.01
+    },
 ]
-print(f"Pre-trained param groups: {len(pretrained_params)}, New/Head param groups: {len(new_params)}")
 
+print(f"Pre-trained parameter groups (LR={LR_PRE_TRAINED}): {len(pretrained_params_list)}")
+print(f"New/Head parameter groups (LR={LR_NEW_WEIGHTS}): {len(new_params_list)}")
 # ====================================================================
 # STEP 6: TRAINER SETUP
 # ====================================================================
