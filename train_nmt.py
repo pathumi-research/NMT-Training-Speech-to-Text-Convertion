@@ -252,7 +252,7 @@ training_args = Seq2SeqTrainingArguments(
     greater_is_better=False,
     predict_with_generate=True,
     learning_rate=LR_PRE_TRAINED, # This LR is overridden by the custom AdamW optimizer below
-    safe_serialization=True
+    # safe_serialization=True
 )
 
 # Initialize Trainer.
