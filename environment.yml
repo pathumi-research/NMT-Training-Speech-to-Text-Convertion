@@ -1,0 +1,28 @@
+name: nmt-project-py310
+channels:
+  - pytorch
+  - nvidia/label/cuda-12.1  # Using a standard CUDA channel for better PyTorch 3.10 compatibility
+  - conda-forge
+  - defaults
+dependencies:
+  # Python Version
+  - python=3.10 
+  
+  # PyTorch & GPU Dependencies (Using common versions compatible with Python 3.10)
+  # NOTE: These versions are a slight adjustment from your notebook's latest, 
+  # but should be functional and compatible with Python 3.10.
+  - pytorch=2.1.0 
+  - torchvision=0.16.0
+  - torchaudio=2.1.0
+  - cudatoolkit=12.1  # Specifying a common compatible CUDA version
+  
+  # Scientific & Utility Libraries
+  - sympy=1.13.3
+  - scikit-learn=1.4.0
+  - tqdm=4.66.1
+  
+  # Pip-installed Libraries
+  - pip:
+    - torchmetrics>=1.8.2
+    - lightning-utilities>=0.15.2
+

@@ -1,0 +1,16 @@
+Create the environment: Run this command in your terminal. Conda will resolve the dependencies and create a new environment named nmt-project-py310:
+
+Bash
+
+conda env create -f environment.yml
+Activate the environment:
+
+Bash
+
+conda activate nmt-project-py310
+Run the script: Once activated, ensure your nmt_base_local.py script and merged_f.txt data file are in the same folder, and run the script:
+
+Bash
+
+python nmt_base_local.py
+This process ensures your project runs with the correct dependencies under a Python 3.10 environment.""""
